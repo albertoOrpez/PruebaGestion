@@ -1,0 +1,252 @@
+<html>
+
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Calcite Components: Core concepts</title>
+
+  <script type="module" src="https://js.arcgis.com/calcite-components/1.0.0-beta.77/calcite.esm.js"></script>
+  <link rel="stylesheet" type="text/css" href="https://js.arcgis.com/calcite-components/1.0.0-beta.77/calcite.css" />
+
+  <script src="https://js.arcgis.com/4.21/"></script>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.21/esri/themes/light/main.css" />
+
+
+  <style>
+    html,
+    body,
+    #viewDiv {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+      width: 100%;
+    }
+
+
+    .calcite-tutorial {
+      --calcite-ui-brand: #255e9c;
+/*       --calcite-ui-brand-hover: #ed1c23; */
+    }
+
+    .calcite-tutorial calcite-chip {
+      --calcite-ui-foreground-2: var(--calcite-ui-brand);
+      --calcite-ui-text-1: white;
+      margin-inline-end: .75rem;
+    }
+
+
+  </style>
+
+</head>
+
+
+<body>
+  <calcite-shell content-behind class="calcite-tutorial">
+    <calcite-shell-panel slot="primary-panel" detached> 
+      <calcite-panel heading="Cálculo del Trayecto Multimodal">
+        <calcite-block heading="Seleccione una ruta" id="origenDestinoBlock" open>
+
+         <!--  <calcite-tooltip-manager slot="control">
+            <calcite-action disabled icon="reset" id="control-reset-el"></calcite-action>
+            <calcite-tooltip reference-element="control-reset-el" position="bottom">
+              Reset to defaults
+            </calcite-tooltip>
+          </calcite-tooltip-manager> -->
+
+          <calcite-label>           
+            <calcite-radio-button-group name="basic-group" multiple>
+                <calcite-label layout="inline">
+                    Metro<calcite-switch label="Cercanias" name="Cercanias" scale="s" checked disabled></calcite-switch>
+                </calcite-label>
+                <calcite-label layout="inline">
+                    EMT<calcite-switch label="Cercanias" name="Cercanias" scale="s" checked=true></calcite-switch>
+                </calcite-label>
+                <calcite-label layout="inline">
+                    Cercanías<calcite-switch label="Cercanias" name="Cercanias" scale="s" checked=true></calcite-switch>
+                </calcite-label>               
+            </calcite-radio-button-group>
+          </calcite-label>
+          <calcite-label>
+            <calcite-input icon="map-pin" placeholder="Búsqueda por dirección o estación">
+                <calcite-button slot="action" appearance="transparent" icon-end="pin-plus"></calcite-button>
+            </calcite-input>                        
+          </calcite-label>
+          <calcite-label>
+            <calcite-input icon="map-pin" placeholder="Búsqueda por dirección o estación">
+                <calcite-button slot="action" appearance="transparent" icon-end="pin-plus"></calcite-button>
+            </calcite-input>           
+          </calcite-label>
+          <calcite-label>
+            Modo de viaje:
+            <calcite-select id="control-year-el">
+              <calcite-option label="Más rápido" value="rapido"></calcite-option>
+              <calcite-option label="Menos transbordos" value="transbordos"></calcite-option>            
+            </calcite-select>
+          </calcite-label>
+          
+          <calcite-label>
+            <calcite-radio-group id="" width="full">
+              <calcite-radio-group-item id="btnBuscar" value="we">Buscar</calcite-radio-group-item>
+              <calcite-radio-group-item id="btnLimpiar" value="tr">Limpiar</calcite-radio-group-item>            
+            </calcite-radio-group>
+          </calcite-label>
+          
+        </calcite-block>
+        <calcite-block open heading="Resumen de ruta" id="resumen-block" hidden>
+          <calcite-notice active icon="line" width="full">
+            <div slot="title">Estación de Sol - Paco de Lucía</div>
+            <div slot="title" style="color:#255e9c">0 h 42 min de trayecto</div>
+            <div slot="message">Incluido el tiempo medio de espera en andén o parada.</div>            
+            <div slot="message">17.60 km</div>
+            <div slot="message" style="color:#9a9c25">Existen incidencias en estación</div>
+          </calcite-notice>
+        </calcite-block>
+      <!--   <calcite-block collapsible heading="Indicaciones" id="result-block">
+          <calcite-list id="result-list"></calcite-list>
+        </calcite-block> -->
+        <calcite-block collapsible heading="Indicaciones" id="result-block" hidden>
+          <calcite-list>
+            <calcite-list-item label="Comience en Estación de Metro de Atocha" description="" value="">
+                <calcite-action disabled slot="actions-start" icon="walking-distance"></calcite-action>
+            </calcite-list-item>
+            <calcite-list-item label="Tome la línea 1, en sentido Pinar de Chamartín" description="Summary lorem ipsum" value="">
+                <calcite-action disabled slot="actions-start" icon="tour"></calcite-action>
+            </calcite-list-item>
+            <calcite-list-item icon="layer" label="Bájese en la estación Sol" description="" value="">
+                <calcite-action disabled slot="actions-start" icon="tour"></calcite-action>
+            </calcite-list-item>
+            <calcite-list-item label="Finalice en Estación de Sol" description="" value="">
+              <calcite-action disabled slot="actions-start" icon="tour"></calcite-action>
+              <calcite-action slot="actions-end" icon="information"></calcite-action>
+          </calcite-list-item>
+        </calcite-list>
+        </calcite-block>
+      </calcite-panel>
+    </calcite-shell-panel>
+
+    <div id="viewDiv"></div>
+
+  </calcite-shell>
+</body>
+
+<script>
+
+  var map, 
+      layer,
+      layerRoute,
+      pointsRoute;
+
+  require([
+    "esri/Map",
+    "esri/views/MapView",
+    "esri/layers/MapImageLayer",
+    "esri/symbols/WebStyleSymbol",
+    "esri/Basemap",
+    "esri/rest/support/TopFeaturesQuery",
+    "esri/rest/support/TopFilter",
+    "esri/widgets/Home",
+    "esri/layers/FeatureLayer",
+    "esri/widgets/Search"
+    
+  ], (Map, MapView, MapImageLayer, WebStyleSymbol, Basemap, TopFeaturesQuery, TopFilter, Home, FeatureLayer, Search) => (async () => {
+
+    layer = new MapImageLayer({
+      url:
+        "https://mapas.metromadrid.es/arcgis/rest/services/Mapas/MapaMetro/MapServer",
+   /*    outFields: ["*"],
+      renderer: await setRenderer(),
+      popupTemplate: createPopupTemplate() */
+    });
+
+    var line = {
+      type: "simple-line",
+      style: "short-dash",
+      cap: "round",
+      join: "round",
+      width: 3,
+      color: [1, 70, 143, 1]
+    };
+
+    layerRoute = new FeatureLayer({
+      url: "https://mapas.metromadrid.es/arcgis/rest/services/Rutas/MetroMultimodalCompleto3D/MapServer/6",
+      definitionExpression: "OBJECTID  IN (1736,1741,1742,1743,1744,1745,1746,1747,1748,1749)", // "ID_LINEA = 2"
+      renderer: {
+        type: "simple", // autocasts as new SimpleRenderer()
+        symbol: line 
+      },
+      opacity: 0      
+    });  
+ 
+    const webStyleSymbol = new WebStyleSymbol({
+      name: "tear-pin-2",
+  styleName: "Esri2DPointSymbolsStyle"
+    });
+
+    pointsRoute = new FeatureLayer({
+      url: "https://mapas.metromadrid.es/arcgis/rest/services/Rutas/EstacionesOrigenRutas/MapServer/0",
+      definitionExpression: "idEstacion IN (118, 108)", // "ID_LINEA = 2"
+      renderer: {
+        type: "simple",
+        symbol: webStyleSymbol,
+        xoffset: -4    
+      },   
+      opacity: 0      
+    });
+
+    map = new Map({
+      basemap: "streets-navigation-vector",
+      layers: [layer, layerRoute, pointsRoute]
+    });
+
+    const view = new MapView({
+      container: "viewDiv",
+      map: map,
+      center: [-3.8196215, 40.4378698],
+      zoom: 10
+    });
+
+    let homeWidget = new Home({
+      view: view
+    });
+
+    const searchWidget = new Search({
+      view: view
+    });
+    // Adds the search widget below other elements in
+    // the top left corner of the view
+    view.ui.add(searchWidget, {
+      position: "top-right",
+      index: 2
+    });
+
+    view.ui.add(homeWidget, "top-right");
+    view.ui.move("zoom", "top-right");
+    const layerView = await view.whenLayerView(layer);    
+
+    document.getElementById("btnBuscar").onclick = function (){      
+      /* document.querySelector("#origenDestinoBlock").collapsible = true;
+      document.querySelector("#origenDestinoBlock").open = false; */
+      document.querySelector("#resumen-block").hidden = false;
+      document.querySelector("#result-block").hidden = false;
+      layer.opacity = 0.4;
+      layerRoute.opacity = 1;
+      pointsRoute.opacity = 1;
+    }
+    document.getElementById("btnLimpiar").onclick = function (){      
+      document.querySelector("#origenDestinoBlock").collapsible = true;
+      document.querySelector("#origenDestinoBlock").open = true;
+      document.querySelector("#resumen-block").hidden = true;
+      document.querySelector("#result-block").hidden = true;
+      layerRoute.opacity = 0;
+      layer.opacity = 1;
+      pointsRoute.opacity = 0;
+    }
+
+    
+
+  })());
+
+</script>
+
+</html>
